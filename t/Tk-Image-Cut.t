@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
- use Test::More tests => 77;
+ use Test::More tests => 113;
 # use Test::More "no_plan";
 BEGIN { use_ok('Tk::Image::Cut') };
 
@@ -26,7 +26,6 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($cut, "grid");
  ok($cut->grid());
  can_ok($cut, "SelectImage");
-# ok($cut->SelectImage());
  ok(my $test_image = $cut->Photo(
  	-file	=> "test.jpg",
  	-format	=> "JPEG",
@@ -36,15 +35,9 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	-anchor	=> "nw",
  	));
  can_ok($cut, "ImageIncrease");
-# ok($cut->ImageIncrease());
  can_ok($cut, "ImageReduce"); 
-# ok($cut->ImageReduce());
  can_ok($cut, "ImageCut");
-# ok($cut->ImageCut());
  can_ok($cut, "CreateAperture");
-# ok($cut->CreateAperture());
- can_ok($cut, "MoveAperture");
-# ok($cut->MoveAperture());
  can_ok($cut, "MoveUpperLine");
  can_ok($cut, "MoveUnderLine");
  can_ok($cut, "MoveRightLine");
@@ -52,17 +45,31 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($cut, "MoveUpperLeftCorner");
  can_ok($cut, "MoveUnderLeftCorner");
  can_ok($cut, "MoveUpperRightCorner");
- can_ok($cut, "MoveUnderLeftCorner");
+ can_ok($cut, "MoveUnderRightCorner");
  can_ok($cut, "Move");
  can_ok($cut, "ShowCursor");
  can_ok($cut, "SetImageOutWidth");
  can_ok($cut, "SetImageOutHeight");
  can_ok($cut, "SetImageOutName");
+ can_ok($cut, "SetShape");
+ can_ok($cut, "SelectColor");
+ can_ok($cut, "GetPointsOval");
+ can_ok($cut, "StartDrawing");
+ can_ok($cut, "DrawOval");
+ can_ok($cut, "MoveOval");
+ can_ok($cut, "EndDrawOval");
+ can_ok($cut, "DeleteBindings");
+ can_ok($cut, "Scroll");
+
+
+
+
  can_ok($cut, "Subwidget");
  for(qw/
  	ButtonSelectImage
  	LabelShape
  	bEntryShape
+ 	ButtonColor
  	LabelWidthOut
  	EntryWidthOut
  	LabelHeightOut
@@ -119,9 +126,54 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	)->grid());
  can_ok($mw, "after");
  can_ok($mw, "destroy");
- ok($mw->after(2000, sub { $mw->destroy(); }));
+ ok($mw->after(2000, \&MyTests));
  MainLoop();
 #-------------------------------------------------
+ sub MyTests
+ 	{
+	$cut->{aperture_x1} = 0;
+ 	$cut->{aperture_y1} = 0;
+ 	$cut->{aperture_x2} = $cut->{_new_image_width} = $cut->{image_in_width} = $test_image->width();
+ 	$cut->{aperture_y2} = $cut->{_new_image_height} = $cut->{image_in_height} = $test_image->height();
+ 	$cut->{file_in} = "test.jpg";
+ 	$cut->{image_in} = $test_image;
+ 	$cut->{image_format} = "JPEG";
+ 	ok($cut->ImageIncrease());
+ 	ok($cut->ImageReduce());
+ 	ok($cut->SetImageOutName());
+ 	ok($cut->SetImageOutWidth());
+ 	ok($cut->SetImageOutHeight());
+ 	ok($cut->ImageCut());
+ 	ok($cut->CreateAperture());
+ 	ok($cut->SetShape());
+ 	ok(Tk::Image::Cut::MoveUpperLine($cut->Subwidget("Canvas"), $cut, 100));
+ 	ok(Tk::Image::Cut::MoveUnderLine($cut->Subwidget("Canvas"), $cut, 100));
+ 	ok(Tk::Image::Cut::MoveRightLine($cut->Subwidget("Canvas"), $cut, 100));
+ 	ok(Tk::Image::Cut::MoveLeftLine($cut->Subwidget("Canvas"), $cut, 100));
+ 	ok(Tk::Image::Cut::MoveUpperLeftCorner($cut->Subwidget("Canvas"), $cut, 100, 50));
+ 	ok(Tk::Image::Cut::MoveUnderLeftCorner($cut->Subwidget("Canvas"), $cut, 100, 50));
+ 	ok(Tk::Image::Cut::MoveUpperRightCorner($cut->Subwidget("Canvas"), $cut, 100, 50));
+ 	ok(Tk::Image::Cut::MoveUnderRightCorner($cut->Subwidget("Canvas"), $cut, 100, 50));
+ 	ok($cut->Move());
+ 	ok(Tk::Image::Cut::ShowCursor($cut->Subwidget("Canvas"), $cut, 100, 100));
+ 	# ok($cut->SelectColor());
+ 	# ok($cut->SelectImage());
+ 	ok($cut->StartDrawing());
+ 	ok($cut->GetPointsOval(50, 50, 100, 200));
+ 	ok(Tk::Image::Cut::DrawOval($cut->Subwidget("Canvas"), $cut, 30, 30));
+ 	ok(Tk::Image::Cut::MoveOval($cut->Subwidget("Canvas"), $cut, 50, 50));
+ 	ok(Tk::Image::Cut::EndDrawOval($cut->Subwidget("Canvas"), $cut, 60, 60));
+ 	ok($cut->DeleteBindings());
+ 	ok(Tk::Image::Cut::Scroll($cut->Subwidget("Canvas"), $cut, 30, 40));
+ 	can_ok($mw, "destroy");
+ 	$mw->destroy();
+ 	}
+#-------------------------------------------------
+
+
+
+
+
 
 
 

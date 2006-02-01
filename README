@@ -1,9 +1,12 @@
-Tk-Image-Cut version 0.01
+Tk-Image-Cut version 0.02
 =========================
 
- This is a graphic user interface to cut pictures.
- I hope the graphic user interface is simple enough in order to
- be understood without great declarations.
+ Perl extension for a graphic user interface to cut pictures.
+ The module is a mixed widget from Buttons, Labels, BrowseEntry, Entrys and Canvas widgets.
+ I hope the graphic user interface is simple enough to be understood without great declarations.
+ It can be used as an independent application or just like how any other widget. 
+ Try out the test.pl program.
+ You can use all standard widget options.
 
 INSTALLATION
 
@@ -20,18 +23,19 @@ This module requires these other modules and libraries:
 
  Tk
  Tk::Frame
- Tk::FileSelect
  Tk::JPEG
  Tk::PNG
+ Tk::FileSelect
 
 COPYRIGHT AND LICENCE
 
- Copyright (C) 2006 by Torsten Knorr
- create-soft@tiscali.de
- http://www.planet-interkom.de/t.knorr/index.html
+Copyright (C) 2006 by Torsten Knorr
+create-soft@tiscali.de
+http://www.planet-interkom.de/t.knorr/index.html
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.9.2 or,
 at your option, any later version of Perl 5 you may have available.
+
 
 

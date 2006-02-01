@@ -1,6 +1,6 @@
 #*** test.pl Sun Jan 22 17:25:49 2006 ***#
-# Copyright (C) 2006 by Torsten Knorr
-# create-soft@tiscali.de
+# Copyright (C) 2006 T.Knorr
+# create.soft@tiscali.de
 # All rights reserved!
 #-------------------------------------------------
  use strict;
@@ -20,6 +20,7 @@
  	ButtonSelectImage
  	LabelShape
  	bEntryShape
+ 	ButtonColor
  	LabelWidthOut
  	EntryWidthOut
  	LabelHeightOut

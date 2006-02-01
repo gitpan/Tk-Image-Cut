@@ -1,6 +1,11 @@
 Revision history for Perl extension Tk::Image::Cut.
 
+0.02 Sun Jan 29 19:34:12 2006
+ 	- functions added to cut pictures into oval shape
+ 	- add some tests
+
 0.01  Sat Jan 21 13:54:21 2006
 	- original version; created by h2xs 1.23 with options
 		-AXn Tk::Image::Cut
+
 
