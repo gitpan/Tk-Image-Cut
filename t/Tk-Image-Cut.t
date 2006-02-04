@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
- use Test::More tests => 113;
+ use Test::More tests => 141;
 # use Test::More "no_plan";
 BEGIN { use_ok('Tk::Image::Cut') };
 
@@ -54,14 +54,16 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($cut, "SetShape");
  can_ok($cut, "SelectColor");
  can_ok($cut, "GetPointsOval");
- can_ok($cut, "StartDrawing");
  can_ok($cut, "DrawOval");
  can_ok($cut, "MoveOval");
  can_ok($cut, "EndDrawOval");
  can_ok($cut, "DeleteBindings");
  can_ok($cut, "Scroll");
-
-
+ can_ok($cut, "GetPointsCircle");
+ can_ok($cut, "StartDraw");
+ can_ok($cut, "DrawCircle");
+ can_ok($cut, "MoveCircle");
+ can_ok($cut, "EndDrawCircle");
 
 
  can_ok($cut, "Subwidget");
@@ -131,18 +133,31 @@ BEGIN { use_ok('Tk::Image::Cut') };
 #-------------------------------------------------
  sub MyTests
  	{
-	$cut->{aperture_x1} = 0;
- 	$cut->{aperture_y1} = 0;
- 	$cut->{aperture_x2} = $cut->{_new_image_width} = $cut->{image_in_width} = $test_image->width();
- 	$cut->{aperture_y2} = $cut->{_new_image_height} = $cut->{image_in_height} = $test_image->height();
- 	$cut->{file_in} = "test.jpg";
- 	$cut->{image_in} = $test_image;
- 	$cut->{image_format} = "JPEG";
+	ok($cut->{aperture_x1} = 1);
+ 	ok($cut->{aperture_y1} = 1);
+ 	ok($cut->{aperture_x2} = $cut->{_new_image_width} = $cut->{image_in_width} = $test_image->width());
+ 	ok($cut->{aperture_y2} = $cut->{_new_image_height} = $cut->{image_in_height} = $test_image->height());
+ 	ok($cut->{file_in} = "test.jpg");
+ 	ok($cut->{image_in} = $test_image);
+ 	ok($cut->{image_format} = "JPEG");
  	ok($cut->ImageIncrease());
  	ok($cut->ImageReduce());
  	ok($cut->SetImageOutName());
  	ok($cut->SetImageOutWidth());
  	ok($cut->SetImageOutHeight());
+ 	ok($cut->ImageCut());
+ 	ok($cut->{_shape} = "oval");
+ 	ok($cut->{_color} = "#FF0000");
+ 	ok($cut->ImageCut());
+ 	ok($cut->{_shape} = "circle");
+ 	ok($cut->{_color} = "#00FF00");
+ 	ok($cut->ImageCut());
+ 	ok($cut->ImageReduce());
+ 	ok($cut->{_color} = "#0000FF");
+ 	ok($cut->ImageCut());
+ 	ok($cut->ImageIncrease());
+ 	ok($cut->ImageIncrease());
+ 	ok($cut->{_color} = "#00FFFF");
  	ok($cut->ImageCut());
  	ok($cut->CreateAperture());
  	ok($cut->SetShape());
@@ -158,8 +173,12 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	ok(Tk::Image::Cut::ShowCursor($cut->Subwidget("Canvas"), $cut, 100, 100));
  	# ok($cut->SelectColor());
  	# ok($cut->SelectImage());
- 	ok($cut->StartDrawing());
  	ok($cut->GetPointsOval(50, 50, 100, 200));
+ 	ok($cut->GetPointsCircle(50, 50, 222, 333));
+ 	ok(Tk::Image::Cut::StartDraw($cut->Subwidget("Canvas"), $cut, 30, 200));
+ 	ok(Tk::Image::Cut::DrawCircle($cut->Subwidget("Canvas"), $cut, 40, 77));
+ 	ok(Tk::Image::Cut::MoveCircle($cut->Subwidget("Canvas"), $cut, 51, 78));
+ 	ok(Tk::Image::Cut::EndDrawCircle($cut->Subwidget("Canvas"), $cut, 55, 111));
  	ok(Tk::Image::Cut::DrawOval($cut->Subwidget("Canvas"), $cut, 30, 30));
  	ok(Tk::Image::Cut::MoveOval($cut->Subwidget("Canvas"), $cut, 50, 50));
  	ok(Tk::Image::Cut::EndDrawOval($cut->Subwidget("Canvas"), $cut, 60, 60));
@@ -169,6 +188,7 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	$mw->destroy();
  	}
 #-------------------------------------------------
+
 
 
 

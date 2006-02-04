@@ -1,5 +1,5 @@
 #*** Cut.pm ***#
-# Copyright (C) 2006 Torsten Knorr
+# Copyright (C) 2006 by Torsten Knorr
 # create-soft@tiscali.de
 # All rights reserved!
 #-------------------------------------------------
@@ -14,7 +14,7 @@
  use Tk::PNG;
 #-------------------------------------------------
  @Tk::Image::Cut::ISA = qw(Tk::Frame);
- $Tk::Image::Cut::VERSION = '0.02';
+ $Tk::Image::Cut::VERSION = '0.03';
  Construct Tk::Widget "Cut";
 #-------------------------------------------------
  sub Populate
@@ -71,7 +71,7 @@
  		)->grid(
  		@grid,
  		);
- 	$cut->{bentry_shape}->insert("end", "rectangle", "oval");
+ 	$cut->{bentry_shape}->insert("end", "rectangle", "oval", "circle");
 #-------------------------------------------------
  	$grid[1]++;
  	$cut->{button_color} = $cut->Button(
@@ -219,6 +219,15 @@
  			-anchor		=> "nw",
  			-tags		=> "image"
  			);
+ 		if(($self->{canvas}->width() < $self->{image_in_width}) or
+ 		($self->{canvas}->height() < $self->{image_in_height}))
+ 			{
+ 			$self->{canvas}->bind("image", "<Leave>", [\&Scroll, $self, Ev('x'), Ev('y')]);
+ 			}
+ 		else
+ 			{
+ 			$self->{canvas}->bind("image", "<Leave>", sub { });
+ 			}
  		$self->CreateAperture();
  		}
  	return 1;
@@ -260,21 +269,29 @@
  		-from	=> $self->{aperture_x1}, $self->{aperture_y1}, $self->{aperture_x2}, $self->{aperture_y2},
  		-to	=> 0, 0, $self->{_new_image_width}, $self->{_new_image_height},
  		);
+ 	my $ref_p_out;
  	if($self->{_shape} eq "oval")
  		{
-		my ($ref_points_out, $ref_points_in) = $self->GetPointsOval(0, 0,
+		($ref_p_out) = $self->GetPointsOval(0, 0, 
+ 			--$self->{_new_image_width}, 
+ 			--$self->{_new_image_height}
+ 			);
+ 		}
+ 	elsif($self->{_shape} eq "circle")
+ 		{
+ 		($ref_p_out) = $self->GetPointsCircle(0, 0,
  			--$self->{_new_image_width},
  			--$self->{_new_image_height}
  			);
- 		if(defined($self->{_color}))
- 			{
- 			$self->{image_out}->put($self->{_color}, -to => $_->[0], $_->[1]) for(@{$ref_points_out});
- 			}
- 		else
- 			{
- 			$self->{image_out}->transparencySet($_->[0], $_->[1], 1) for(@{$ref_points_out});
- 			}	
+ 		}	
+ 	if(defined($self->{_color}))
+ 		{
+ 		$self->{image_out}->put($self->{_color}, -to => $_->[0], $_->[1]) for(@{$ref_p_out});
  		}
+ 	else
+ 		{
+ 		$self->{image_out}->transparencySet($_->[0], $_->[1], 1) for(@{$ref_p_out});
+ 		}	
  	$self->{image_out}->write(
  		$self->{_new_image_name},
  		-format	=> $self->{image_format},
@@ -286,8 +303,6 @@
  	{
  	my ($self) = @_;
  	return if(!(defined($self->{image_in})));
- 	$self->{canvas}->delete("aperture");
- 	$self->{canvas}->delete("points_out");
  	$self->DeleteBindings();
  	SWITCH:
  		{
@@ -298,6 +313,8 @@
  	$self->{aperture_y1} = int($self->{image_in_height} / 5);
  	$self->{aperture_x2} = int($self->{image_in_width} * 0.8);
  	$self->{aperture_y2} = int($self->{image_in_height} * 0.8);
+ 	$self->{canvas}->delete("aperture");
+ 	$self->{canvas}->delete("points_out");
  	$self->{aperture} = $self->{canvas}->createRectangle(
  		$self->{aperture_x1},
  		$self->{aperture_y1},
@@ -334,11 +351,21 @@
  		});
  	$self->{canvas}->bind("aperture", "<ButtonPress>", [\&StartMove, $self, Ev('x'), Ev('y')]);
  	$self->{canvas}->bind("aperture", "<ButtonRelease>", [\&EndMove, $self]);
+ 	last(SWITCH);
  	};
 #-------------------------------------------------
  ($self->{_shape} eq "oval")		&& do
  	{
- 	$self->StartDrawing();
+ 	$self->{canvas}->bind("image", "<ButtonPress>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
+ 	$self->{canvas}->bind("points_out", "<ButtonPress>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
+ 	last(SWITCH);
+ 	};
+#-------------------------------------------------
+ ($self->{_shape} eq "circle")	&& do
+ 	{
+ 	$self->{canvas}->bind("image", "<ButtonPress>", [\&DrawCircle, $self, Ev('x'), Ev('y')]);
+ 	$self->{canvas}->bind("points_out", "<ButtonPress>", [\&DrawCircle, $self, Ev('x'), Ev('y')]); 
+ 	last(SWITCH);
  	};
 #-------------------------------------------------
  	}
@@ -351,32 +378,21 @@
  	$self->{canvas}->bind("aperture", "<Motion>", sub { });
  	$self->{canvas}->bind("aperture", "<ButtonPress>", sub { });
  	$self->{canvas}->bind("aperture", "<ButtonRelease>", sub { });
- 	$self->{canvas}->bind("image", "<ButtonPress>", sub { });
  	$self->{canvas}->bind("image", "<Motion>", sub { });
+ 	$self->{canvas}->bind("image", "<ButtonPress>", sub { });
  	$self->{canvas}->bind("image", "<ButtonRelease>", sub { });
- 	$self->{canvas}->bind("image", "<Leave>", sub { });
- 	$self->{canvas}->bind("image", "<Enter>", sub { }),
  	$self->{canvas}->bind("points_out", "<ButtonPress>", sub { });
  	$self->{canvas}->bind("points_out", "<ButtonRelease>", sub { });
  	return 1;
  	}
 #-------------------------------------------------
- sub StartDrawing
- 	{
- 	my ($self) = @_;
- 	$self->DeleteBindings();
- 	$self->{canvas}->bind("image", "<ButtonPress>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
- 	$self->{canvas}->bind("points_out", "<ButtonPress>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
- 	return 1;
- 	}
-#-------------------------------------------------
- sub DrawOval
+ sub StartDraw
  	{
  	my ($canvas, $self, $x, $y) = @_;
  	$x = $canvas->canvasx($x);
  	$y = $canvas->canvasy($y);
- 	$canvas->delete("aperture");
- 	$canvas->delete("points_out");
+ 	$self->{canvas}->delete("aperture");
+ 	$self->{canvas}->delete("points_out");
  	$canvas->createOval(
  		$x, $y, $x, $y,
  		-outline		=> $self->{_aperturecolor},
@@ -385,9 +401,70 @@
  		);
  	$self->{start_x} = $self->{aperture_x1} = $x;
  	$self->{start_y} = $self->{aperture_y1} = $y;
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub DrawCircle
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+ 	StartDraw(@_);
+ 	$canvas->bind("image", "<Motion>", [\&MoveCircle, $self, Ev('x'), Ev('y')]);
+ 	$canvas->bind("image", "<ButtonRelease>", [\&EndDrawCircle, $self, Ev('x'), Ev('y')]);
+ 	$canvas->bind("points_out", "<ButtonRelease>", [\&EndDrawCircle, $self, Ev('x'), Ev('y')]);
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub MoveCircle
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+ 	$x = $canvas->canvasx($x);
+ 	$y = $canvas->canvasy($y);
+ 	my $diff_x = ($x - $self->{start_x});
+ 	my $diff_y = ($y - $self->{start_y});
+ 	$self->{aperture_x2} = ($diff_x < $diff_y) ? ($self->{start_x} + $diff_y) : ($self->{start_x} + $diff_x);
+ 	$self->{aperture_y2} = ($diff_x < $diff_y) ? ($self->{start_y} + $diff_y) : ($self->{start_y} + $diff_x);
+ 	$canvas->coords(
+ 		"aperture",
+ 		$self->{start_x},
+ 		$self->{start_y},
+ 		$self->{aperture_x2},
+ 		$self->{aperture_y2},
+ 		);
+ 	$self->SetImageOutHeight();
+ 	$self->SetImageOutWidth();
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub EndDrawCircle
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+ 	MoveCircle(@_);
+ 	$self->SetImageOutName();
+ 	my ($ref_p_out, $ref_p_in, $ref_l_out, $ref_l_in) = $self->GetPointsCircle(
+ 		$self->{aperture_x1},
+ 		$self->{aperture_y1},
+ 		$self->{aperture_x2},
+ 		$self->{aperture_y2}
+ 		);
+ 	for(@{$ref_l_out})
+ 		{
+ 		$canvas->createLine(
+ 			$_->[0], $_->[1], $_->[2], $_->[3],
+ 			-width		=> 1,
+ 			-fill		=> $self->{_color} || "#FFFFFF",
+ 			-tags		=> "points_out"
+ 			);
+ 		}
+ 	$self->CreateAperture();
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub DrawOval
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+ 	StartDraw(@_);
  	$canvas->bind("image", "<Motion>", [\&MoveOval, $self, Ev('x'), Ev('y')]);
  	$canvas->bind("image", "<ButtonRelease>", [\&EndDrawOval, $self, Ev('x'), Ev('y')]);
- 	$canvas->bind("image", "<Leave>", [\&Scroll, $self, Ev('x'), Ev('y')]);
  	$canvas->bind("points_out", "<ButtonRelease>", [\&EndDrawOval, $self, Ev('x'), Ev('y')]);
  	return 1;
  	}
@@ -412,18 +489,7 @@
  sub EndDrawOval
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$self->{_timer}->cancel() if($self->{_timer});
- 	$x = $self->{aperture_x2} = $canvas->canvasx($x);
- 	$y = $self->{aperture_y2} = $canvas->canvasy($y);
- 	 $canvas->coords(
- 		"aperture",
- 		$self->{start_x},
- 		$self->{start_y},
- 		$x,
- 		$y
- 		);
- 	$self->SetImageOutHeight();
- 	$self->SetImageOutWidth();
+ 	MoveOval(@_);
  	$self->SetImageOutName();
  	my ($ref_p_out, $ref_p_in, $ref_l_out, $ref_l_in) = $self->GetPointsOval(
  		$self->{aperture_x1},
@@ -440,19 +506,7 @@
  			-tags		=> "points_out"
  			);
  		}
-=head
-# used only for testing
- 	for(@{$ref_l_in})
- 		{
- 		$canvas->createLine(
- 			$_->[0], $_->[1], $_->[2], $_->[3],
- 			-width		=> 1,
- 			-fill		=> "#FF0000",
- 			-tags		=> "points_out"
- 			);
- 		}
-=cut
- 	$self->StartDrawing();
+ 	$self->CreateAperture();
  	return 1;
  	}
 #-------------------------------------------------
@@ -821,6 +875,52 @@
  	return(\@points_out, \@points_in, \@lines_out, \@lines_in);
  	}
 #-------------------------------------------------
+ sub GetPointsCircle
+ 	{
+ 	my ($self, $p_x1, $p_y1, $p_x2, $p_y2) = @_;
+ 	my (@points_out, @points_in, @lines_out, @lines_in, $x2py2, $pos_x, $pos_y, $diff_y);
+ 	($p_x1, $p_x2) = ($p_x2, $p_x1) if($p_x1 > $p_x2); 
+ 	($p_y1, $p_y2) = ($p_y2, $p_y1) if($p_y1 > $p_y2);
+ 	my $width = ($p_x2 - $p_x1);
+ 	#my $height= ($p_y2 - $p_y1);
+ 	return([], [], [], []) if($width < 2);
+ 	#return([], [], [], []) if($height < 2);
+ 	my $r = int($width / 2);
+ 	my $r2 = ($r**2);  
+ 	my $coord_x = ($p_x1 + $r);
+ 	my $coord_y = ($p_y1 + $r);
+ 	for(my $i_x = -$r; $i_x <= $r; $i_x++)
+ 		{
+ 		$pos_x = ($coord_x + $i_x);
+# lines in and out of the circle
+ 		$diff_y = sqrt(abs($r2 - ($i_x**2)));
+ 		push(@lines_out, [$pos_x, $p_y1, $pos_x, ($coord_y - $diff_y)]);
+ 		push(@lines_out, [$pos_x, ($coord_y + $diff_y), $pos_x, $p_y2]);
+# we don't need lines in at this time
+# 		push(@lines_in, [$pos_x, ($coord_y - $diff_y), $pos_x, ($coord_y + $diff_y)]);
+ 		for(my $i_y = $r; $i_y >= -$r; $i_y--)
+ 			{
+ 			$pos_y = ($coord_y + $i_y);
+ 			$x2py2 = (($i_x**2) + ($i_y**2));
+=head1
+# we don't need points in at this time
+ 			if($x2py2 < $r2)
+ 				{
+# points in the internal of the circle
+ 				push(@points_in, [$pos_x, $pos_y]);
+ 				}
+ 			elsif($x2py2 > $r2)
+=cut
+ 			if($x2py2 > $r2)
+ 				{
+# points on the outside of the circle
+ 				push(@points_out, [$pos_x, $pos_y]);
+ 				}
+ 			} 
+ 		}
+ 	return(\@points_out, \@points_in, \@lines_out, \@lines_in);
+ 	}
+#-------------------------------------------------
  sub SetShape
  	{
  	my ($self) = @_;
@@ -834,8 +934,11 @@
  			$self->CreateAperture();
  			last(SWITCH);
  			};
- 		($self->{_shape} eq "oval")		&& do
+ 		(($self->{_shape} eq "oval") or
+ 		($self->{_shape} eq "circle"))	&& do
  			{
+ 			$self->{canvas}->delete("aperture");
+ 			$self->{canvas}->delete("points_out");
  			$self->{button_color}->configure(
  				-state		=> "normal"
  				);
@@ -932,10 +1035,16 @@ Tk::Image::Cut - Perl extension for a graphic user interface to cut pictures.
 
 =head1 DESCRIPTION
 
- The module is a mixed widget from Buttons, Labels, BrowseEntry, Entrys, Canvas widgets.
+ Perl extension for a graphic user interface to cut pictures.
+ The module is a mixed widget from Buttons, Labels, BrowseEntry, Entrys and Canvas widgets.
  I hope the graphic user interface is simple enough to be understood without great declarations.
  It can be used as an independent application or just like how any other widget. 
- Try out the test.pl program.
+ Try out the test.pl program.You can select between three cutting forms.
+ "Rectangle", "Oval" or "Circle"
+ In order to cut out pictures in circular form or ovally click
+ with the mouse onto the upper left corner and hold the
+ Button pressed while the mouse is moved.
+
  You can use all standard widget options.
 
 =head1 CONSTRUCTOR AND INITIALIZATION
@@ -952,7 +1061,7 @@ Tk::Image::Cut - Perl extension for a graphic user interface to cut pictures.
  	)->pack();
  $cut->Subwidget("Canvas")->configure(
  	-width		=> 1000,
- 	-height		=> 800
+ 	-height		=> 800,
  	);
  MainLoop();
 
@@ -988,7 +1097,8 @@ Selecting the picture to be worked on.
 
 =item <bEntryShape>
 
-Selecting the form of the aperture. "rectangle" or "oval"
+You can select between three cutting forms.
+ "Rectangle", "Oval" or "Circle" default: "Rectangle"
 
 =item <ButtonColor>
 
@@ -1061,6 +1171,4 @@ it under the same terms as Perl itself, either Perl version 5.9.2 or,
 at your option, any later version of Perl 5 you may have available.
 
 =cut
-
-
 

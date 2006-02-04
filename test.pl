@@ -1,6 +1,6 @@
 #*** test.pl Sun Jan 22 17:25:49 2006 ***#
-# Copyright (C) 2006 T.Knorr
-# create.soft@tiscali.de
+# Copyright (C) 2006 by Torsten Knorr
+# create-soft@tiscali.de
 # All rights reserved!
 #-------------------------------------------------
  use strict;
@@ -55,15 +55,18 @@
  	/)
  	{
  	$cut->Subwidget($_)->configure(
- 		-width		=> 10,
+ 		-width		=> 6,
  		);
  	}
  $cut->Subwidget("EntryNameOut")->configure(
  		-width		=> 40,
  		);
  $cut->Subwidget("Canvas")->configure(
- 	-width		=> 800,
- 	-height		=> 600,
+ 	-width		=> 1000,
+ 	-height		=> 800,
  	);
  MainLoop();
 #-------------------------------------------------
+
+
+
