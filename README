@@ -1,4 +1,4 @@
-Tk-Image-Cut version 0.03
+Tk-Image-Cut version 0.04
 =========================
 
  Perl extension for a graphic user interface to cut pictures.
@@ -31,6 +31,7 @@ This module requires these other modules and libraries:
  Tk::JPEG
  Tk::PNG
  Tk::FileSelect
+ Tk::Image::Calculation
 
 COPYRIGHT AND LICENCE
 
@@ -41,6 +42,7 @@ http://www.planet-interkom.de/t.knorr/index.html
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.9.2 or,
 at your option, any later version of Perl 5 you may have available.
+
 
 
 

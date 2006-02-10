@@ -5,7 +5,7 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
- use Test::More tests => 141;
+ use Test::More tests => 146;
 # use Test::More "no_plan";
 BEGIN { use_ok('Tk::Image::Cut') };
 
@@ -23,6 +23,7 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($mw, "Cut");
  ok(my $cut = $mw->Cut());
  isa_ok($cut, "Tk::Image::Cut");
+ isa_ok($cut->{_cal}, "Tk::Image::Calculation");
  can_ok($cut, "grid");
  ok($cut->grid());
  can_ok($cut, "SelectImage");
@@ -53,13 +54,15 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($cut, "SetImageOutName");
  can_ok($cut, "SetShape");
  can_ok($cut, "SelectColor");
- can_ok($cut, "GetPointsOval");
+ can_ok($cut, "GetPointsOutOval");
+ can_ok($cut, "GetLinesOutOval");
  can_ok($cut, "DrawOval");
  can_ok($cut, "MoveOval");
  can_ok($cut, "EndDrawOval");
  can_ok($cut, "DeleteBindings");
  can_ok($cut, "Scroll");
- can_ok($cut, "GetPointsCircle");
+ can_ok($cut, "GetPointsOutCircle");
+ can_ok($cut, "GetLinesOutCircle");
  can_ok($cut, "StartDraw");
  can_ok($cut, "DrawCircle");
  can_ok($cut, "MoveCircle");
@@ -173,8 +176,10 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	ok(Tk::Image::Cut::ShowCursor($cut->Subwidget("Canvas"), $cut, 100, 100));
  	# ok($cut->SelectColor());
  	# ok($cut->SelectImage());
- 	ok($cut->GetPointsOval(50, 50, 100, 200));
- 	ok($cut->GetPointsCircle(50, 50, 222, 333));
+ 	ok($cut->GetPointsOutOval(50, 50, 100, 200));
+ 	ok($cut->GetPointsOutCircle(50, 50, 222, 333));
+ 	ok($cut->GetLinesOutOval(51, 52, 103, 204));
+ 	ok($cut->GetLinesOutCircle(52, 53, 104, 205));
  	ok(Tk::Image::Cut::StartDraw($cut->Subwidget("Canvas"), $cut, 30, 200));
  	ok(Tk::Image::Cut::DrawCircle($cut->Subwidget("Canvas"), $cut, 40, 77));
  	ok(Tk::Image::Cut::MoveCircle($cut->Subwidget("Canvas"), $cut, 51, 78));
@@ -188,6 +193,7 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	$mw->destroy();
  	}
 #-------------------------------------------------
+
 
 
 

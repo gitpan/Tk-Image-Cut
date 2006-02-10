@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::Image::Cut.
 
+0.04 Fri Feb 10 21:28:32 2006
+ 	- remove the functions "GetPointsOval" and "GetPointsCircle"
+ 	- use "GetPointsOutOval", "GetPointsOutCircle", "GetLinesOutOval" and "GetLinesOutCircle" from the
+ 	baseclass Tk::Image::Calculation
+ 	- add some tests
+
 0.03 Sat Feb 4 17:50:00 2006
  	- functions added to cut pictures into circle shape
  	- add some tests
@@ -13,6 +19,7 @@ Revision history for Perl extension Tk::Image::Cut.
 0.01  Sat Jan 21 13:54:21 2006
 	- original version; created by h2xs 1.23 with options
 		-AXn Tk::Image::Cut
+
 
 
 

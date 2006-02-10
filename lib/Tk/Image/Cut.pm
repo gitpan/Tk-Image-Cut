@@ -12,9 +12,10 @@
  use Tk::FileSelect;
  use Tk::JPEG;
  use Tk::PNG;
+ use Tk::Image::Calculation;
 #-------------------------------------------------
- @Tk::Image::Cut::ISA = qw(Tk::Frame);
- $Tk::Image::Cut::VERSION = '0.03';
+ @Tk::Image::Cut::ISA = qw(Tk::Frame Tk::Image::Calculation);
+ $Tk::Image::Cut::VERSION = '0.04';
  Construct Tk::Widget "Cut";
 #-------------------------------------------------
  sub Populate
@@ -30,6 +31,7 @@
  		-row	0
  		-sticky	nswe
  		); 	
+ 	$cut->{_cal} = Tk::Image::Calculation->new();
 #-------------------------------------------------
 =head
  	-aperturecolor
@@ -272,14 +274,14 @@
  	my $ref_p_out;
  	if($self->{_shape} eq "oval")
  		{
-		($ref_p_out) = $self->GetPointsOval(0, 0, 
+		($ref_p_out) = $self->{_cal}->GetPointsOutOval(0, 0, 
  			--$self->{_new_image_width}, 
  			--$self->{_new_image_height}
  			);
  		}
  	elsif($self->{_shape} eq "circle")
  		{
- 		($ref_p_out) = $self->GetPointsCircle(0, 0,
+ 		($ref_p_out) = $self->{_cal}->GetPointsOutCircle(0, 0,
  			--$self->{_new_image_width},
  			--$self->{_new_image_height}
  			);
@@ -440,7 +442,7 @@
  	my ($canvas, $self, $x, $y) = @_;
  	MoveCircle(@_);
  	$self->SetImageOutName();
- 	my ($ref_p_out, $ref_p_in, $ref_l_out, $ref_l_in) = $self->GetPointsCircle(
+ 	my ($ref_l_out) = $self->{_cal}->GetLinesOutCircle(
  		$self->{aperture_x1},
  		$self->{aperture_y1},
  		$self->{aperture_x2},
@@ -491,7 +493,7 @@
  	my ($canvas, $self, $x, $y) = @_;
  	MoveOval(@_);
  	$self->SetImageOutName();
- 	my ($ref_p_out, $ref_p_in, $ref_l_out, $ref_l_in) = $self->GetPointsOval(
+ 	my ($ref_l_out) = $self->{_cal}->GetLinesOutOval(
  		$self->{aperture_x1},
  		$self->{aperture_y1},
  		$self->{aperture_x2},
@@ -825,102 +827,6 @@
  	return 1;
  	}
 #-------------------------------------------------
- sub GetPointsOval
- 	{
- 	my ($self, $point_x1, $point_y1, $point_x2, $point_y2) = @_;
- 	my (@points_out, @points_in, @lines_out, @lines_in, $d, $pos_x_p, $pos_x_n, $y, $y1, $y2);
- 	($point_x1, $point_x2) = ($point_x2, $point_x1) if($point_x1 > $point_x2);
- 	($point_y1, $point_y2) = ($point_y2, $point_y1) if($point_y1 > $point_y2);
- 	my $width = abs($point_x2 - $point_x1);
- 	my $height= abs($point_y2 - $point_y1);
- 	return([], [], [], []) if($width < 2);
- 	return([], [], [], []) if($height < 2);
- 	my $a = ($width / 2);
- 	my $a2  = $a**2;
- 	my $b = ($height / 2);
- 	my $c = ($b / $a);
- 	my $pos_x = ($a + $point_x1);
- 	for(my $x = 0; $x <= $a; $x++)
- 		{
- 		$d = int($c * sqrt(abs($a2 - ($x**2))));
- 		$y1 = ($b - $d);
- 		$y2 = ($b + $d);
-		$pos_x_p = int($x + $pos_x);
- 		$pos_x_n = int(-$x + $pos_x);
- 		push(@lines_out, [$pos_x_p, $point_y1, $pos_x_p, ($y1 + $point_y1)]);
- 		push(@lines_out, [$pos_x_n, $point_y1, $pos_x_n, ($y1 + $point_y1)]);
- 		for($y = 0; $y <= $y1; $y++)
- 			{
-			push(@points_out, [$pos_x_p, ($y + $point_y1)]);
-			push(@points_out, [$pos_x_n, ($y + $point_y1)]);
- 			} 
-=head
-# we don't need @lines_in or @points_in at this time
- 		push(@lines_in, [$pos_x_p, ($y1 + $point_y1), $pos_x_p, ($y2 + $point_y1)]);
- 		push(@lines_in, [$pos_x_n, ($y1 + $point_y1), $pos_x_n, ($y2 + $point_y1)]);
- 		for($y = $y1; $y <= $y2; $y++)
- 			{
- 			push(@points_in, [$pos_x_p, ($y + $point_y1)]);
- 			push(@points_in, [$pos_x_n, ($y + $point_y1)]);
- 			}
-=cut
- 		push(@lines_out, [$pos_x_p, ($y2 + $point_y1), $pos_x_p, ($height + $point_y1)]);
- 		push(@lines_out, [$pos_x_n, ($y2 + $point_y1), $pos_x_n, ($height + $point_y1)]);
- 		for($y = $y2; $y <= $height; $y++)
- 			{
- 			push(@points_out, [$pos_x_p, ($y + $point_y1)]);
- 			push(@points_out, [$pos_x_n, ($y + $point_y1)]);
- 			}
- 		}
- 	return(\@points_out, \@points_in, \@lines_out, \@lines_in);
- 	}
-#-------------------------------------------------
- sub GetPointsCircle
- 	{
- 	my ($self, $p_x1, $p_y1, $p_x2, $p_y2) = @_;
- 	my (@points_out, @points_in, @lines_out, @lines_in, $x2py2, $pos_x, $pos_y, $diff_y);
- 	($p_x1, $p_x2) = ($p_x2, $p_x1) if($p_x1 > $p_x2); 
- 	($p_y1, $p_y2) = ($p_y2, $p_y1) if($p_y1 > $p_y2);
- 	my $width = ($p_x2 - $p_x1);
- 	#my $height= ($p_y2 - $p_y1);
- 	return([], [], [], []) if($width < 2);
- 	#return([], [], [], []) if($height < 2);
- 	my $r = int($width / 2);
- 	my $r2 = ($r**2);  
- 	my $coord_x = ($p_x1 + $r);
- 	my $coord_y = ($p_y1 + $r);
- 	for(my $i_x = -$r; $i_x <= $r; $i_x++)
- 		{
- 		$pos_x = ($coord_x + $i_x);
-# lines in and out of the circle
- 		$diff_y = sqrt(abs($r2 - ($i_x**2)));
- 		push(@lines_out, [$pos_x, $p_y1, $pos_x, ($coord_y - $diff_y)]);
- 		push(@lines_out, [$pos_x, ($coord_y + $diff_y), $pos_x, $p_y2]);
-# we don't need lines in at this time
-# 		push(@lines_in, [$pos_x, ($coord_y - $diff_y), $pos_x, ($coord_y + $diff_y)]);
- 		for(my $i_y = $r; $i_y >= -$r; $i_y--)
- 			{
- 			$pos_y = ($coord_y + $i_y);
- 			$x2py2 = (($i_x**2) + ($i_y**2));
-=head1
-# we don't need points in at this time
- 			if($x2py2 < $r2)
- 				{
-# points in the internal of the circle
- 				push(@points_in, [$pos_x, $pos_y]);
- 				}
- 			elsif($x2py2 > $r2)
-=cut
- 			if($x2py2 > $r2)
- 				{
-# points on the outside of the circle
- 				push(@points_out, [$pos_x, $pos_y]);
- 				}
- 			} 
- 		}
- 	return(\@points_out, \@points_in, \@lines_out, \@lines_in);
- 	}
-#-------------------------------------------------
  sub SetShape
  	{
  	my ($self) = @_;
@@ -1171,4 +1077,5 @@ it under the same terms as Perl itself, either Perl version 5.9.2 or,
 at your option, any later version of Perl 5 you may have available.
 
 =cut
+
 
