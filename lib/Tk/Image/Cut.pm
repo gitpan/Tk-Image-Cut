@@ -15,7 +15,7 @@
  use Tk::Image::Calculation;
 #-------------------------------------------------
  @Tk::Image::Cut::ISA = qw(Tk::Frame Tk::Image::Calculation);
- $Tk::Image::Cut::VERSION = '0.04';
+ $Tk::Image::Cut::VERSION = '0.06';
  Construct Tk::Widget "Cut";
 #-------------------------------------------------
  sub Populate
@@ -31,21 +31,19 @@
  		-row	0
  		-sticky	nswe
  		); 	
- 	$cut->{_cal} = Tk::Image::Calculation->new();
 #-------------------------------------------------
-=head
- 	-aperturecolor
- 	-aperturewidth
- 	-shape
- 	-zoom
- 	-shrink
-=cut
+# 	-aperturecolor
+# 	-aperturewidth
+# 	-shape
+# 	-zoom
+# 	-shrink
+#-------------------------------------------------
  	$cut->{_aperturecolor} = (defined($args->{-aperturecolor}))	?
  		delete($args->{-aperturecolor})	:	"#00FF00";
  	$cut->{_aperturewidth} = (defined($args->{-aperturewidth}))	?
  		delete($args->{-aperturewidth})	:	4;
  	$cut->{_shape} = (defined($args->{-shape}))			?
- 		delete($args->{-shape})		:	"rectangle";
+ 		delete($args->{-shape})		:	"circle";
  	$cut->{_zoom_out} = (defined($args->{-zoom}))			?
  		delete($args->{-zoom})		:		1;
  	$cut->{_shrink_out} = (defined($args->{-shrink}))			?
@@ -268,20 +266,20 @@
  	$self->{image_out}->copy($self->{image_in},
  		-zoom	=> $self->{_zoom_out},
  		-subsample => $self->{_shrink_out},
- 		-from	=> $self->{aperture_x1}, $self->{aperture_y1}, $self->{aperture_x2}, $self->{aperture_y2},
+ 		-from	=> $self->{ap_x1}, $self->{ap_y1}, $self->{ap_x2}, $self->{ap_y2},
  		-to	=> 0, 0, $self->{_new_image_width}, $self->{_new_image_height},
  		);
  	my $ref_p_out;
  	if($self->{_shape} eq "oval")
  		{
-		($ref_p_out) = $self->{_cal}->GetPointsOutOval(0, 0, 
+		($ref_p_out) = $self->GetPointsOutOval(0, 0, 
  			--$self->{_new_image_width}, 
  			--$self->{_new_image_height}
  			);
  		}
  	elsif($self->{_shape} eq "circle")
  		{
- 		($ref_p_out) = $self->{_cal}->GetPointsOutCircle(0, 0,
+ 		($ref_p_out) = $self->GetPointsOutCircle(0, 0,
  			--$self->{_new_image_width},
  			--$self->{_new_image_height}
  			);
@@ -311,17 +309,17 @@
 #-------------------------------------------------
  ($self->{_shape}eq "rectangle")	&& do
  	{
- 	$self->{aperture_x1} = int($self->{image_in_width} / 5);
- 	$self->{aperture_y1} = int($self->{image_in_height} / 5);
- 	$self->{aperture_x2} = int($self->{image_in_width} * 0.8);
- 	$self->{aperture_y2} = int($self->{image_in_height} * 0.8);
+ 	$self->{ap_x1} = int($self->{image_in_width} / 5);
+ 	$self->{ap_y1} = int($self->{image_in_height} / 5);
+ 	$self->{ap_x2} = int($self->{image_in_width} * 0.8);
+ 	$self->{ap_y2} = int($self->{image_in_height} * 0.8);
  	$self->{canvas}->delete("aperture");
  	$self->{canvas}->delete("points_out");
  	$self->{aperture} = $self->{canvas}->createRectangle(
- 		$self->{aperture_x1},
- 		$self->{aperture_y1},
- 		$self->{aperture_x2},
- 		$self->{aperture_y2},
+ 		$self->{ap_x1},
+ 		$self->{ap_y1},
+ 		$self->{ap_x2},
+ 		$self->{ap_y2},
  		-outline		=> $self->{_aperturecolor},
  		-width		=> $self->{_aperturewidth},
  		-tags		=> "aperture",
@@ -391,18 +389,16 @@
  sub StartDraw
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$x = $canvas->canvasx($x);
- 	$y = $canvas->canvasy($y);
+ 	$self->{ap_x1} = $canvas->canvasx($x);
+ 	$self->{ap_y1} = $canvas->canvasy($y);
  	$self->{canvas}->delete("aperture");
  	$self->{canvas}->delete("points_out");
  	$canvas->createOval(
- 		$x, $y, $x, $y,
+ 		$self->{ap_x1}, $self->{ap_y1}, $self->{ap_x1}, $self->{ap_y1},
  		-outline		=> $self->{_aperturecolor},
  		-width		=> $self->{_aperturewidth},
  		-tags		=> "aperture"
  		);
- 	$self->{start_x} = $self->{aperture_x1} = $x;
- 	$self->{start_y} = $self->{aperture_y1} = $y;
  	return 1;
  	}
 #-------------------------------------------------
@@ -421,16 +417,31 @@
  	my ($canvas, $self, $x, $y) = @_;
  	$x = $canvas->canvasx($x);
  	$y = $canvas->canvasy($y);
- 	my $diff_x = ($x - $self->{start_x});
- 	my $diff_y = ($y - $self->{start_y});
- 	$self->{aperture_x2} = ($diff_x < $diff_y) ? ($self->{start_x} + $diff_y) : ($self->{start_x} + $diff_x);
- 	$self->{aperture_y2} = ($diff_x < $diff_y) ? ($self->{start_y} + $diff_y) : ($self->{start_y} + $diff_x);
+ 	my $diff_x = ($x - $self->{ap_x1});
+ 	my $diff_y = ($y - $self->{ap_y1});
+ 	my $diff_max = (abs($diff_x) < abs($diff_y)) ? abs($diff_y) : abs($diff_x);
+	if($diff_x < 0)
+ 		{
+  		$self->{ap_x2} =  ($self->{ap_x1} - $diff_max);
+ 		}
+ 	else
+ 		{
+ 		$self->{ap_x2} = ($self->{ap_x1} + $diff_max);
+ 		}
+ 	if($diff_y < 0)
+ 		{
+ 		$self->{ap_y2} =  ($self->{ap_y1} - $diff_max);
+ 		}
+ 	else
+ 		{
+ 		$self->{ap_y2} =  ($self->{ap_y1} + $diff_max);
+ 		}
  	$canvas->coords(
  		"aperture",
- 		$self->{start_x},
- 		$self->{start_y},
- 		$self->{aperture_x2},
- 		$self->{aperture_y2},
+ 		$self->{ap_x1},
+ 		$self->{ap_y1},
+ 		$self->{ap_x2},
+ 		$self->{ap_y2},
  		);
  	$self->SetImageOutHeight();
  	$self->SetImageOutWidth();
@@ -442,11 +453,11 @@
  	my ($canvas, $self, $x, $y) = @_;
  	MoveCircle(@_);
  	$self->SetImageOutName();
- 	my ($ref_l_out) = $self->{_cal}->GetLinesOutCircle(
- 		$self->{aperture_x1},
- 		$self->{aperture_y1},
- 		$self->{aperture_x2},
- 		$self->{aperture_y2}
+ 	my ($ref_l_out) = $self->GetLinesOutCircle(
+ 		$self->{ap_x1},
+ 		$self->{ap_y1},
+ 		$self->{ap_x2},
+ 		$self->{ap_y2}
  		);
  	for(@{$ref_l_out})
  		{
@@ -474,14 +485,14 @@
  sub MoveOval
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$x = $self->{aperture_x2} = $canvas->canvasx($x);
- 	$y = $self->{aperture_y2} = $canvas->canvasy($y);
+ 	$self->{ap_x2} = $canvas->canvasx($x);
+ 	$self->{ap_y2} = $canvas->canvasy($y);
  	$canvas->coords(
  		"aperture",
- 		$self->{start_x},
- 		$self->{start_y},
- 		$x,
- 		$y
+ 		$self->{ap_x1},
+ 		$self->{ap_y1},
+ 		$self->{ap_x2},
+ 		$self->{ap_y2}
  		);
  	$self->SetImageOutHeight();
  	$self->SetImageOutWidth();
@@ -493,11 +504,11 @@
  	my ($canvas, $self, $x, $y) = @_;
  	MoveOval(@_);
  	$self->SetImageOutName();
- 	my ($ref_l_out) = $self->{_cal}->GetLinesOutOval(
- 		$self->{aperture_x1},
- 		$self->{aperture_y1},
- 		$self->{aperture_x2},
- 		$self->{aperture_y2}
+ 	my ($ref_l_out) = $self->GetLinesOutOval(
+ 		$self->{ap_x1},
+ 		$self->{ap_y1},
+ 		$self->{ap_x2},
+ 		$self->{ap_y2}
  		);
  	for(@{$ref_l_out})
  		{
@@ -556,82 +567,82 @@
  	$y = $canvas->canvasy($y);
  	SWITCH:
  	{
- 	(($x > ($self->{aperture_x1} + 10))	&& 
- 	($x < ($self->{aperture_x2} - 10))	&&
- 	($y > ($self->{aperture_y1} - 4))	&&
- 	($y < ($self->{aperture_y1} + 4)))	&& do
+ 	(($x > ($self->{ap_x1} + 10))	&& 
+ 	($x < ($self->{ap_x2} - 10))	&&
+ 	($y > ($self->{ap_y1} - 4))	&&
+ 	($y < ($self->{ap_y1} + 4)))	&& do
  		{
  		$self->{cursor_style} = "top_side";
  		last SWITCH;
  		};
- 	(($x > ($self->{aperture_x1} + 10))	&&
- 	($x < ($self->{aperture_x2} - 10))	&&
- 	($y > ($self->{aperture_y2} - 4))	&&
- 	($y < ($self->{aperture_y2} + 4)))	&& do
+ 	(($x > ($self->{ap_x1} + 10))	&&
+ 	($x < ($self->{ap_x2} - 10))	&&
+ 	($y > ($self->{ap_y2} - 4))	&&
+ 	($y < ($self->{ap_y2} + 4)))	&& do
  		{
  		$self->{cursor_style} = "bottom_side",
  		last SWITCH;
  		};
- 	(($y > ($self->{aperture_y1} + 10))	&&
- 	($y < ($self->{aperture_y2} - 10))	&&
- 	($x > ($self->{aperture_x1} - 4))	&&
- 	($x < ($self->{aperture_x1} +4)))	&& do
+ 	(($y > ($self->{ap_y1} + 10))	&&
+ 	($y < ($self->{ap_y2} - 10))	&&
+ 	($x > ($self->{ap_x1} - 4))	&&
+ 	($x < ($self->{ap_x1} +4)))	&& do
  		{
  		$self->{cursor_style} = "left_side";
  		last SWITCH;
  		};
- 	(($y > ($self->{aperture_y1} + 10))	&&
- 	($y < ($self->{aperture_y2} - 10))	&&
- 	($x > ($self->{aperture_x2} - 4))	&&
- 	($x < ($self->{aperture_x2} + 4)))	&& do
+ 	(($y > ($self->{ap_y1} + 10))	&&
+ 	($y < ($self->{ap_y2} - 10))	&&
+ 	($x > ($self->{ap_x2} - 4))	&&
+ 	($x < ($self->{ap_x2} + 4)))	&& do
  		{
  		$self->{cursor_style} = "right_side";
  		last SWITCH;
  		};
- 	((($x >= $self->{aperture_x1})	&&
- 	($x <= ($self->{aperture_x1} + 10))	&&
- 	($y >= ($self->{aperture_y1} - 4))	&&
- 	($y <= ($self->{aperture_y1} + 4)))	||
- 	(($y >= $self->{aperture_y1})	&&
- 	($y <= ($self->{aperture_y1} + 10))	&&
- 	($x >= ($self->{aperture_x1} - 4))	&&
- 	($x <= ($self->{aperture_x1} + 4))))	&& do
+ 	((($x >= $self->{ap_x1})		&&
+ 	($x <= ($self->{ap_x1} + 10))	&&
+ 	($y >= ($self->{ap_y1} - 4))		&&
+ 	($y <= ($self->{ap_y1} + 4)))	||
+ 	(($y >= $self->{ap_y1})		&&
+ 	($y <= ($self->{ap_y1} + 10))	&&
+ 	($x >= ($self->{ap_x1} - 4))		&&
+ 	($x <= ($self->{ap_x1} + 4))))	&& do
  		{
  		$self->{cursor_style} = "top_left_corner";
  		last SWITCH;
  		};
- 	((($x <= $self->{aperture_x2})	&&
- 	($x >= ($self->{aperture_x2} - 10))	&&
- 	($y <= ($self->{aperture_y1} + 4))	&&
- 	($y >= ($self->{aperture_y1} - 4)))	||
- 	(($y >= $self->{aperture_y1})	&&
- 	($y <= ($self->{aperture_y1} + 10))	&&
- 	($x <= ($self->{aperture_x2} + 4))	&&
- 	($x >= ($self->{aperture_x2} - 4))))	&& do
+ 	((($x <= $self->{ap_x2})		&&
+ 	($x >= ($self->{ap_x2} - 10))		&&
+ 	($y <= ($self->{ap_y1} + 4))		&&
+ 	($y >= ($self->{ap_y1} - 4)))		||
+ 	(($y >= $self->{ap_y1})		&&
+ 	($y <= ($self->{ap_y1} + 10))	&&
+ 	($x <= ($self->{ap_x2} + 4))		&&
+ 	($x >= ($self->{ap_x2} - 4))))	&& do
  		{
  		$self->{cursor_style} = "top_right_corner";
  		last SWITCH;
  		};
- 	((($y >= ($self->{aperture_y2} - 10))	&&
- 	($y <= $self->{aperture_y2})	&&
- 	($x <= ($self->{aperture_x1} + 4))	&&
- 	($x >= ($self->{aperture_x1} - 4)))	||
- 	(($x >= $self->{aperture_x1})	&&
- 	($x <= ($self->{aperture_x1} + 10))	&&
- 	($y <= ($self->{aperture_y2} + 4))	&&
- 	($y >= ($self->{aperture_y2} - 4))))	&& do
+ 	((($y >= ($self->{ap_y2} - 10))	&&
+ 	($y <= $self->{ap_y2})		&&
+ 	($x <= ($self->{ap_x1} + 4))		&&
+ 	($x >= ($self->{ap_x1} - 4)))		||
+ 	(($x >= $self->{ap_x1})		&&
+ 	($x <= ($self->{ap_x1} + 10))	&&
+ 	($y <= ($self->{ap_y2} + 4))		&&
+ 	($y >= ($self->{ap_y2} - 4))))	&& do
  		{
  		$self->{cursor_style} = "bottom_left_corner";
  		last SWITCH;
  		};
- 	((($x <= $self->{aperture_x2})	&&
- 	($x >= ($self->{aperture_x2} - 10))	&&
- 	($y <= ($self->{aperture_y2} + 4))	&&
- 	($y >= ($self->{aperture_y2} - 4)))	||
- 	(($y <= $self->{aperture_y2})	&&
- 	($y >= ($self->{aperture_y2} - 10))	&&
- 	($x <= ($self->{aperture_x2} + 4))	&&
- 	($x >= ($self->{aperture_x2} - 4))))	&& do
+ 	((($x <= $self->{ap_x2})		&&
+ 	($x >= ($self->{ap_x2} - 10))		&&
+ 	($y <= ($self->{ap_y2} + 4))		&&
+ 	($y >= ($self->{ap_y2} - 4)))		||
+ 	(($y <= $self->{ap_y2})		&&
+ 	($y >= ($self->{ap_y2} - 10))		&&
+ 	($x <= ($self->{ap_x2} + 4))		&&
+ 	($x >= ($self->{ap_x2} - 4))))	&& do
  		{
  		$self->{cursor_style} = "bottom_right_corner";
  		last SWITCH;
@@ -707,7 +718,7 @@
  sub MoveUpperLine
  	{
  	my ($canvas, $self, $y) = @_;
- 	$self->{aperture_y1} = $canvas->canvasy($y);
+ 	$self->{ap_y1} = $canvas->canvasy($y);
  	$self->SetImageOutHeight();
  	$self->Move();
  	return 1;
@@ -716,7 +727,7 @@
  sub MoveUnderLine
  	{
  	my ($canvas, $self, $y) = @_;
- 	$self->{aperture_y2} = $canvas->canvasy($y);
+ 	$self->{ap_y2} = $canvas->canvasy($y);
  	$self->SetImageOutHeight();
  	$self->Move();
  	return 1;
@@ -725,7 +736,7 @@
  sub MoveLeftLine
  	{
  	my($canvas, $self, $x) = @_;
- 	$self->{aperture_x1} = $canvas->canvasx($x);
+ 	$self->{ap_x1} = $canvas->canvasx($x);
  	$self->SetImageOutWidth();
  	$self->Move();
  	return 1;
@@ -734,7 +745,7 @@
  sub MoveRightLine
  	{
  	my ($canvas, $self, $x) = @_;
- 	$self->{aperture_x2} = $canvas->canvasx($x);
+ 	$self->{ap_x2} = $canvas->canvasx($x);
  	$self->SetImageOutWidth();
  	$self->Move();
  	return 1;
@@ -743,8 +754,8 @@
  sub MoveUpperLeftCorner
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$self->{aperture_x1} = $canvas->canvasx($x);
- 	$self->{aperture_y1} = $canvas->canvasy($y);
+ 	$self->{ap_x1} = $canvas->canvasx($x);
+ 	$self->{ap_y1} = $canvas->canvasy($y);
  	$self->SetImageOutWidth();
  	$self->SetImageOutHeight();
  	$self->Move();
@@ -754,8 +765,8 @@
  sub MoveUpperRightCorner
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$self->{aperture_x2} = $canvas->canvasx($x);
- 	$self->{aperture_y1} = $canvas->canvasy($y);
+ 	$self->{ap_x2} = $canvas->canvasx($x);
+ 	$self->{ap_y1} = $canvas->canvasy($y);
  	$self->SetImageOutWidth();
  	$self->SetImageOutHeight();
  	$self->Move();
@@ -765,8 +776,8 @@
  sub MoveUnderLeftCorner
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$self->{aperture_x1} = $canvas->canvasx($x);
- 	$self->{aperture_y2} = $canvas->canvasy($y);
+ 	$self->{ap_x1} = $canvas->canvasx($x);
+ 	$self->{ap_y2} = $canvas->canvasy($y);
  	$self->SetImageOutWidth();
  	$self->SetImageOutHeight(); 
  	$self->Move();
@@ -776,8 +787,8 @@
  sub MoveUnderRightCorner
  	{
  	my ($canvas, $self, $x, $y) = @_;
- 	$self->{aperture_x2} = $canvas->canvasx($x);
- 	$self->{aperture_y2} = $canvas->canvasy($y);
+ 	$self->{ap_x2} = $canvas->canvasx($x);
+ 	$self->{ap_y2} = $canvas->canvasy($y);
  	$self->SetImageOutWidth();
  	$self->SetImageOutHeight();
  	$self->Move();
@@ -789,10 +800,10 @@
  	my ($self) = @_;
  	 $self->{canvas}->coords(
  		"aperture", 
-		$self->{aperture_x1},
- 		$self->{aperture_y1},
- 		$self->{aperture_x2},
- 		$self->{aperture_y2},
+		$self->{ap_x1},
+ 		$self->{ap_y1},
+ 		$self->{ap_x2},
+ 		$self->{ap_y2},
  		);
  	return 1;
  	}
@@ -802,7 +813,7 @@
  	my ($self) = @_;
  	$self->{_new_image_width} = 
  		int(abs(
- 		($self->{aperture_x2} - $self->{aperture_x1}) *
+ 		($self->{ap_x2} - $self->{ap_x1}) *
  		($self->{_zoom_out} / $self->{_shrink_out})
  		));
  	return 1;
@@ -813,7 +824,7 @@
  	my ($self) = @_;
  	$self->{_new_image_height} =
  		int(abs(
- 		($self->{aperture_y2} - $self->{aperture_y1}) *
+ 		($self->{ap_y2} - $self->{ap_y1}) *
  		($self->{_zoom_out} / $self->{_shrink_out})
  		));
  	return 1;
@@ -1054,6 +1065,7 @@ None by default.
 
  Tk::Image
  Tk::Photo
+ Tk::Image::Calculation
  http://www.planet-interkom.de/t.knorr/index.html
 
 =head1 KEYWORDS
@@ -1066,7 +1078,7 @@ image, photo, cut, picture, widget
 
 =head1 AUTHOR
 
-Torsten Knorr, E<lt>knorrcpan@tiscali.deE<gt>
+Torsten Knorr, E<lt>torstenknorr@tiscali.deE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
@@ -1077,5 +1089,8 @@ it under the same terms as Perl itself, either Perl version 5.9.2 or,
 at your option, any later version of Perl 5 you may have available.
 
 =cut
+
+
+
 
 

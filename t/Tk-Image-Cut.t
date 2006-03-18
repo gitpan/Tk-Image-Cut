@@ -5,8 +5,8 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
- use Test::More tests => 146;
-# use Test::More "no_plan";
+# use Test::More tests => 145;
+ use Test::More "no_plan";
 BEGIN { use_ok('Tk::Image::Cut') };
 
 #########################
@@ -14,6 +14,7 @@ BEGIN { use_ok('Tk::Image::Cut') };
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
  use_ok("Tk");
+
  ok(my $mw = MainWindow->new());
  isa_ok($mw, "MainWindow");
  can_ok($mw, "title");
@@ -23,7 +24,6 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($mw, "Cut");
  ok(my $cut = $mw->Cut());
  isa_ok($cut, "Tk::Image::Cut");
- isa_ok($cut->{_cal}, "Tk::Image::Calculation");
  can_ok($cut, "grid");
  ok($cut->grid());
  can_ok($cut, "SelectImage");
@@ -136,10 +136,10 @@ BEGIN { use_ok('Tk::Image::Cut') };
 #-------------------------------------------------
  sub MyTests
  	{
-	ok($cut->{aperture_x1} = 1);
- 	ok($cut->{aperture_y1} = 1);
- 	ok($cut->{aperture_x2} = $cut->{_new_image_width} = $cut->{image_in_width} = $test_image->width());
- 	ok($cut->{aperture_y2} = $cut->{_new_image_height} = $cut->{image_in_height} = $test_image->height());
+	ok($cut->{ap_x1} = 1);
+ 	ok($cut->{ap_y1} = 1);
+ 	ok($cut->{ap_x2} = $cut->{_new_image_width} = $cut->{image_in_width} = $test_image->width());
+ 	ok($cut->{ap_y2} = $cut->{_new_image_height} = $cut->{image_in_height} = $test_image->height());
  	ok($cut->{file_in} = "test.jpg");
  	ok($cut->{image_in} = $test_image);
  	ok($cut->{image_format} = "JPEG");
@@ -148,7 +148,7 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	ok($cut->SetImageOutName());
  	ok($cut->SetImageOutWidth());
  	ok($cut->SetImageOutHeight());
- 	ok($cut->ImageCut());
+ 	#ok($cut->ImageCut());
  	ok($cut->{_shape} = "oval");
  	ok($cut->{_color} = "#FF0000");
  	ok($cut->ImageCut());
@@ -193,6 +193,8 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	$mw->destroy();
  	}
 #-------------------------------------------------
+
+
 
 
 

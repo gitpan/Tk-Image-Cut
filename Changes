@@ -1,5 +1,11 @@
 Revision history for Perl extension Tk::Image::Cut.
 
+0.06 Sat Mar 18 18:40:13 2006
+ 	- bugfix in Makefile.PL
+
+0.05 Sun Feb 26 19:01:26 2006
+ 	- some improvements in the function MoveCircle()
+
 0.04 Fri Feb 10 21:28:32 2006
  	- remove the functions "GetPointsOval" and "GetPointsCircle"
  	- use "GetPointsOutOval", "GetPointsOutCircle", "GetLinesOutOval" and "GetLinesOutCircle" from the
@@ -19,6 +25,8 @@ Revision history for Perl extension Tk::Image::Cut.
 0.01  Sat Jan 21 13:54:21 2006
 	- original version; created by h2xs 1.23 with options
 		-AXn Tk::Image::Cut
+
+
 
 
 
