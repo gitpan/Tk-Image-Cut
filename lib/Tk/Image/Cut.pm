@@ -15,7 +15,7 @@
  use Tk::Image::Calculation;
 #-------------------------------------------------
  @Tk::Image::Cut::ISA = qw(Tk::Frame Tk::Image::Calculation);
- $Tk::Image::Cut::VERSION = '0.06';
+ $Tk::Image::Cut::VERSION = '0.07';
  Construct Tk::Widget "Cut";
 #-------------------------------------------------
  sub Populate
@@ -26,15 +26,17 @@
  	require Tk::Label;
  	require Tk::Canvas;
  	my ($cut, $args) = @_;
+#-------------------------------------------------
  	my @grid = qw(
  		-column	0
  		-row	0
  		-sticky	nswe
  		); 	
+ 	$cut->{ap_x1} = $cut->{ap_x2} = $cut->{ap_y1} = $cut->{ap_y2} = 1;
 #-------------------------------------------------
 # 	-aperturecolor
 # 	-aperturewidth
-# 	-shape
+# 	-shape	=> rectangle, oval, circle, polygon
 # 	-zoom
 # 	-shrink
 #-------------------------------------------------
@@ -43,7 +45,7 @@
  	$cut->{_aperturewidth} = (defined($args->{-aperturewidth}))	?
  		delete($args->{-aperturewidth})	:	4;
  	$cut->{_shape} = (defined($args->{-shape}))			?
- 		delete($args->{-shape})		:	"circle";
+ 		delete($args->{-shape})		:	"rectangle";
  	$cut->{_zoom_out} = (defined($args->{-zoom}))			?
  		delete($args->{-zoom})		:		1;
  	$cut->{_shrink_out} = (defined($args->{-shrink}))			?
@@ -71,16 +73,27 @@
  		)->grid(
  		@grid,
  		);
- 	$cut->{bentry_shape}->insert("end", "rectangle", "oval", "circle");
+ 	$cut->{bentry_shape}->insert(qw/
+ 		end
+ 		rectangle
+ 		oval
+ 		circle
+ 		polygon
+ 		/);
 #-------------------------------------------------
  	$grid[1]++;
  	$cut->{button_color} = $cut->Button(
  		-text		=> "Select Color",
  		-command	=> [\&SelectColor, $cut],
- 		-state		=> "disabled"
  		)->grid(
  		@grid
  		);
+ 	if($cut->{_shape} eq "rectangle")
+ 		{
+ 		$cut->{button_color}->configure(
+ 			-state		=> "disabled",
+ 			);
+ 		}
 #-------------------------------------------------
  	$grid[1]++;
  	$cut->{label_width_out} = $cut->Label(
@@ -258,40 +271,61 @@
  sub ImageCut
  	{
  	my ($self) = @_;
- 	$self->{image_out} = $self->Photo(
+ 	my $temp_image = $self->Photo(
+ 		-file		=> $self->{file_in},
+ 		-format		=> $self->{image_format}
+ 		);
+ 	my $ref_p_out;
+ 	if($self->{_shape} eq "rectangle")
+ 		{
+ 		$ref_p_out = [];
+ 		}
+ 	elsif($self->{_shape} eq "oval")
+ 		{
+		$ref_p_out = $self->GetPointsOutOval(
+ 			$self->{ap_x1}, 
+ 			$self->{ap_y1}, 
+ 			$self->{ap_x2}, 
+ 			$self->{ap_y2}
+ 			);
+ 		}
+ 	elsif($self->{_shape} eq "circle")
+ 		{
+ 		$ref_p_out = $self->GetPointsOutCircle(
+ 			$self->{ap_x1}, 
+			$self->{ap_y1}, 
+ 			$self->{ap_x2}, 
+ 			$self->{ap_y2}
+ 			);
+ 		}	
+ 	elsif($self->{_shape} eq "polygon")
+ 		{
+ 		$ref_p_out = $self->GetPointsOutPolygon(@{$self->{_points_polygon}});
+ 		}
+ 	else
+ 		{
+ 		warn("unknown picture shape\n");
+ 		return;
+ 		}
+ 	if(defined($self->{_color}))
+ 		{
+ 		$temp_image->put($self->{_color}, -to => $_->[0], $_->[1]) for(@{$ref_p_out});
+ 		}
+ 	else
+ 		{
+ 		$temp_image->transparencySet($_->[0], $_->[1], 1) for(@{$ref_p_out});
+ 		}	
+	$self->{image_out} = $self->Photo(
  		-format	=> $self->{image_format},
  		-width	=> $self->{_new_image_width},
- 		-height	=> $self->{_new_image_height},
+ 		-height	=> $self->{_new_image_height}
  		);
- 	$self->{image_out}->copy($self->{image_in},
+ 	$self->{image_out}->copy($temp_image,
  		-zoom	=> $self->{_zoom_out},
  		-subsample => $self->{_shrink_out},
  		-from	=> $self->{ap_x1}, $self->{ap_y1}, $self->{ap_x2}, $self->{ap_y2},
  		-to	=> 0, 0, $self->{_new_image_width}, $self->{_new_image_height},
  		);
- 	my $ref_p_out;
- 	if($self->{_shape} eq "oval")
- 		{
-		($ref_p_out) = $self->GetPointsOutOval(0, 0, 
- 			--$self->{_new_image_width}, 
- 			--$self->{_new_image_height}
- 			);
- 		}
- 	elsif($self->{_shape} eq "circle")
- 		{
- 		($ref_p_out) = $self->GetPointsOutCircle(0, 0,
- 			--$self->{_new_image_width},
- 			--$self->{_new_image_height}
- 			);
- 		}	
- 	if(defined($self->{_color}))
- 		{
- 		$self->{image_out}->put($self->{_color}, -to => $_->[0], $_->[1]) for(@{$ref_p_out});
- 		}
- 	else
- 		{
- 		$self->{image_out}->transparencySet($_->[0], $_->[1], 1) for(@{$ref_p_out});
- 		}	
  	$self->{image_out}->write(
  		$self->{_new_image_name},
  		-format	=> $self->{image_format},
@@ -349,25 +383,39 @@
  			-cursor		=> "arrow",
  			);
  		});
- 	$self->{canvas}->bind("aperture", "<ButtonPress>", [\&StartMove, $self, Ev('x'), Ev('y')]);
- 	$self->{canvas}->bind("aperture", "<ButtonRelease>", [\&EndMove, $self]);
+ 	$self->{canvas}->bind("aperture", "<ButtonPress-1>", [\&StartMove, $self, Ev('x'), Ev('y')]);
+ 	$self->{canvas}->bind("aperture", "<ButtonRelease-1>", [\&EndMove, $self]);
  	last(SWITCH);
  	};
 #-------------------------------------------------
  ($self->{_shape} eq "oval")		&& do
  	{
- 	$self->{canvas}->bind("image", "<ButtonPress>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
- 	$self->{canvas}->bind("points_out", "<ButtonPress>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
+ 	for(qw/image aperture points_out/)
+ 		{
+ 		$self->{canvas}->bind($_, "<ButtonPress-1>", [\&DrawOval, $self, Ev('x'), Ev('y')]);
+ 		}
  	last(SWITCH);
  	};
 #-------------------------------------------------
  ($self->{_shape} eq "circle")	&& do
  	{
- 	$self->{canvas}->bind("image", "<ButtonPress>", [\&DrawCircle, $self, Ev('x'), Ev('y')]);
- 	$self->{canvas}->bind("points_out", "<ButtonPress>", [\&DrawCircle, $self, Ev('x'), Ev('y')]); 
+ 	for(qw/image aperture points_out/)
+ 		{
+ 		$self->{canvas}->bind($_, "<ButtonPress-1>", [\&DrawCircle, $self, Ev('x'), Ev('y')]);
+ 		}
  	last(SWITCH);
  	};
 #-------------------------------------------------
+ ($self->{_shape} eq "polygon")	&& do
+ 	{
+ 	for(qw/image aperture points_out/)
+ 		{
+ 		$self->{canvas}->bind($_, "<ButtonPress-1>", [\&DrawPolygon, $self, Ev('x'), Ev('y')]);
+ 		}
+ 	last(SWITCH);
+ 	};
+#-------------------------------------------------
+ warn("unknown picture shape\n");
  	}
  	return 1;
  	}
@@ -375,14 +423,26 @@
  sub DeleteBindings
  	{
  	my ($self) = @_;
- 	$self->{canvas}->bind("aperture", "<Motion>", sub { });
- 	$self->{canvas}->bind("aperture", "<ButtonPress>", sub { });
- 	$self->{canvas}->bind("aperture", "<ButtonRelease>", sub { });
- 	$self->{canvas}->bind("image", "<Motion>", sub { });
- 	$self->{canvas}->bind("image", "<ButtonPress>", sub { });
- 	$self->{canvas}->bind("image", "<ButtonRelease>", sub { });
- 	$self->{canvas}->bind("points_out", "<ButtonPress>", sub { });
- 	$self->{canvas}->bind("points_out", "<ButtonRelease>", sub { });
+ 	for my $tag (qw/
+ 		image 
+ 		aperture 
+ 		templine 
+ 		points_out/)
+ 		{
+ 		for my $event (qw/
+ 			<ButtonPress-1> 
+ 			<ButtonPress-3>
+ 			<ButtonRelease-1>
+ 			<Motion>
+ 			/)
+ 			{
+ 			$self->{canvas}->bind($tag, $event, sub { });
+ 			}
+ 		}
+ 	for(qw/<Enter> <Leave>/)
+ 		{
+ 		$self->{canvas}->bind("aperture", $_, sub { });
+ 		}
  	return 1;
  	}
 #-------------------------------------------------
@@ -402,13 +462,116 @@
  	return 1;
  	}
 #-------------------------------------------------
+ sub DrawPolygon
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+ 	$x = $canvas->canvasx($x);
+ 	$y = $canvas->canvasy($y);
+ 	$self->{canvas}->delete("aperture");
+ 	$self->{canvas}->delete("points_out");
+ 	$self->{_point_start_templine} = $self->{_points_polygon} = [$x, $y];
+ 	$self->{ap_x1} = $self->{ap_x2} = $x;
+ 	$self->{ap_y1} = $self->{ap_y2} = $y;
+ 	$canvas->createLine(
+ 		$x, $y, $x, $y,
+ 		-tags		=> "templine",
+ 		-fill		=> "#FF0000",
+ 		-width		=> $self->{_aperturewidth},
+ 		);
+ 	 $canvas->createPolygon(
+ 			0, 0, 0, 0, 0, 0,
+ 			-outline		=> $self->{_aperturecolor},
+ 			-width		=> $self->{_aperturewidth},
+ 			-fill		=> "#FFFFFF",
+ 			-stipple		=> "gray25",
+ 			-tags		=> "aperture",
+ 			);
+ 	for(qw/image templine aperture/)
+ 		{
+ 		$canvas->bind($_, "<ButtonPress-1>", [\&MovePolygon, $self, Ev('x'), Ev('y')]);
+ 		$canvas->bind($_, "<ButtonPress-3>", [\&EndDrawPolygon, $self, Ev('x'), Ev('y')]);
+ 		$canvas->bind($_, "<Motion>", [\&MoveTempLine, $self, Ev('x'), Ev('y')]);
+ 		}
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub MovePolygon
+ 	{
+	my ($canvas, $self, $x, $y) = @_;
+ 	$x = $canvas->canvasx($x);
+ 	$y = $canvas->canvasy($y);
+ 	push(@{$self->{_points_polygon}}, ($x, $y));
+ 	if($#{$self->{_points_polygon}} >= 5)
+ 		{
+ 		$canvas->coords("aperture", @{$self->{_points_polygon}});
+ 		}
+ 	else
+ 		{
+ 		$canvas->createLine(
+ 			@{$self->{_point_start_templine}}, $x, $y,
+ 			-fill		=> $self->{_aperturecolor},
+ 			-width		=> $self->{_aperturewidth},
+ 			-tags		=> "start_line",
+ 			);
+ 		}
+ 	$self->{_point_start_templine} = [$x, $y];
+ 	$canvas->coords(
+ 		"templine",
+ 		$x, $y, $x, $y
+ 		);
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub EndDrawPolygon
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+ 	MovePolygon(@_);
+ 	for(my $i = 0; $i < $#{$self->{_points_polygon}}; $i += 2)
+ 		{
+ 		$self->{ap_x1} = $self->{_points_polygon}[$i] if($self->{_points_polygon}[$i] < $self->{ap_x1});
+ 		$self->{ap_y1} = $self->{_points_polygon}[$i + 1] if($self->{_points_polygon}[$i + 1] < $self->{ap_y1});
+ 		$self->{ap_x2} = $self->{_points_polygon}[$i] if($self->{_points_polygon}[$i] > $self->{ap_x2});
+ 		$self->{ap_y2} = $self->{_points_polygon}[$i + 1] if($self->{_points_polygon}[$i + 1] > $self->{ap_y2});
+ 		}
+ 	$self->SetImageOutWidth();
+ 	$self->SetImageOutHeight();
+ 	$self->SetImageOutName();
+ 	my $ref_l_out = $self->GetLinesOutPolygon(@{$self->{_points_polygon}});
+	for(@{$ref_l_out})
+ 		{
+ 		$canvas->createLine(
+ 			$_->[0], $_->[1], $_->[2], $_->[3],
+ 			-width		=> 1,
+ 			-fill		=> $self->{_color} || "#FFFFFF",
+ 			-tags		=> "points_out"
+ 			);
+ 		}
+ 	$canvas->delete("start_line");
+ 	$self->CreateAperture();
+ 	return 1;
+ 	}
+#-------------------------------------------------
+ sub MoveTempLine
+ 	{
+ 	my ($canvas, $self, $x, $y) = @_;
+	$canvas->coords(
+ 		"templine",
+ 		@{$self->{_point_start_templine}}, 
+ 		$canvas->canvasx($x),
+ 		$canvas->canvasy($y)
+ 		);
+ 	return 1;
+ 	}
+#-------------------------------------------------
  sub DrawCircle
  	{
  	my ($canvas, $self, $x, $y) = @_;
  	StartDraw(@_);
- 	$canvas->bind("image", "<Motion>", [\&MoveCircle, $self, Ev('x'), Ev('y')]);
- 	$canvas->bind("image", "<ButtonRelease>", [\&EndDrawCircle, $self, Ev('x'), Ev('y')]);
- 	$canvas->bind("points_out", "<ButtonRelease>", [\&EndDrawCircle, $self, Ev('x'), Ev('y')]);
+ 	for(qw/image aperture/)
+ 		{
+ 		$canvas->bind($_, "<Motion>", [\&MoveCircle, $self, Ev('x'), Ev('y')]);
+ 		$canvas->bind($_, "<ButtonRelease-1>", [\&EndDrawCircle, $self, Ev('x'), Ev('y')]);
+ 		}
  	return 1;
  	}
 #-------------------------------------------------
@@ -476,9 +639,11 @@
  	{
  	my ($canvas, $self, $x, $y) = @_;
  	StartDraw(@_);
- 	$canvas->bind("image", "<Motion>", [\&MoveOval, $self, Ev('x'), Ev('y')]);
- 	$canvas->bind("image", "<ButtonRelease>", [\&EndDrawOval, $self, Ev('x'), Ev('y')]);
- 	$canvas->bind("points_out", "<ButtonRelease>", [\&EndDrawOval, $self, Ev('x'), Ev('y')]);
+ 	for(qw/image aperture/)
+ 		{
+ 		$canvas->bind($_, "<Motion>", [\&MoveOval, $self, Ev('x'), Ev('y')]);
+ 		$canvas->bind($_, "<ButtonRelease-1>", [\&EndDrawOval, $self, Ev('x'), Ev('y')]);
+ 		}
  	return 1;
  	}
 #-------------------------------------------------
@@ -811,22 +976,26 @@
  sub SetImageOutWidth
  	{
  	my ($self) = @_;
+ 	($self->{ap_x1}, $self->{ap_x2}) = ($self->{ap_x2}, $self->{ap_x1}) if($self->{ap_x1} > $self->{ap_x2});
+ 	($self->{ap_y1}, $self->{ap_y2}) = ($self->{ap_y2}, $self->{ap_y1}) if($self->{ap_y1} > $self->{ap_y2});
  	$self->{_new_image_width} = 
- 		int(abs(
- 		($self->{ap_x2} - $self->{ap_x1}) *
+ 		int(
+ 		($self->{ap_x2} - $self->{ap_x1} + 1) *
  		($self->{_zoom_out} / $self->{_shrink_out})
- 		));
+ 		);
  	return 1;
  	}
 #-------------------------------------------------
  sub SetImageOutHeight
  	{
  	my ($self) = @_;
+ 	($self->{ap_x1}, $self->{ap_x2}) = ($self->{ap_x2}, $self->{ap_x1}) if($self->{ap_x1} > $self->{ap_x2});
+ 	($self->{ap_y1}, $self->{ap_y2}) = ($self->{ap_y2}, $self->{ap_y1}) if($self->{ap_y1} > $self->{ap_y2});
  	$self->{_new_image_height} =
- 		int(abs(
- 		($self->{ap_y2} - $self->{ap_y1}) *
+ 		int(
+ 		($self->{ap_y2} - $self->{ap_y1} + 1) *
  		($self->{_zoom_out} / $self->{_shrink_out})
- 		));
+ 		);
  	return 1;
  	}
 #-------------------------------------------------
@@ -852,7 +1021,8 @@
  			last(SWITCH);
  			};
  		(($self->{_shape} eq "oval") or
- 		($self->{_shape} eq "circle"))	&& do
+ 		($self->{_shape} eq "circle") or	
+ 		($self->{_shape} eq "polygon"))	&& do
  			{
  			$self->{canvas}->delete("aperture");
  			$self->{canvas}->delete("points_out");
@@ -956,11 +1126,14 @@ Tk::Image::Cut - Perl extension for a graphic user interface to cut pictures.
  The module is a mixed widget from Buttons, Labels, BrowseEntry, Entrys and Canvas widgets.
  I hope the graphic user interface is simple enough to be understood without great declarations.
  It can be used as an independent application or just like how any other widget. 
- Try out the test.pl program.You can select between three cutting forms.
- "Rectangle", "Oval" or "Circle"
+ Try out the test.pl program.You can select between four cutting forms.
+ "rectangle", "oval", "circle" or "polygon"
  In order to cut out pictures in circular form or ovally click
- with the mouse onto the upper left corner and hold the
- Button pressed while the mouse is moved.
+ with the left mouse button onto the upper left corner and hold the
+ button pressed while the mouse is moved.
+ In order to cut pictures in polygon form you click with the left mouse button 
+ on the first point and draw the mouse to the next point. If you have drawn 
+ the last point you click with the right mouse button.
 
  You can use all standard widget options.
 
@@ -994,7 +1167,7 @@ The border of the aperture. default: 4
 
 =item 	-shape
 
-The shape of the aperture "rectangle", "oval". default: "rectangle"
+The shape of the aperture "rectangle", "oval", "circle" or "polygon". default: "rectangle"
 
 =item	-zoom
 
@@ -1015,7 +1188,7 @@ Selecting the picture to be worked on.
 =item <bEntryShape>
 
 You can select between three cutting forms.
- "Rectangle", "Oval" or "Circle" default: "Rectangle"
+ "rectangle", "oval", "circle" or "polygon" default: "rectangle"
 
 =item <ButtonColor>
 
@@ -1089,6 +1262,10 @@ it under the same terms as Perl itself, either Perl version 5.9.2 or,
 at your option, any later version of Perl 5 you may have available.
 
 =cut
+
+
+
+
 
 
 

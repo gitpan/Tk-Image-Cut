@@ -5,8 +5,8 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-# use Test::More tests => 145;
- use Test::More "no_plan";
+ use Test::More tests => 183;
+# use Test::More "no_plan";
 BEGIN { use_ok('Tk::Image::Cut') };
 
 #########################
@@ -14,7 +14,9 @@ BEGIN { use_ok('Tk::Image::Cut') };
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
  use_ok("Tk");
-
+#-------------------------------------------------
+ 
+#-------------------------------------------------
  ok(my $mw = MainWindow->new());
  isa_ok($mw, "MainWindow");
  can_ok($mw, "title");
@@ -54,20 +56,28 @@ BEGIN { use_ok('Tk::Image::Cut') };
  can_ok($cut, "SetImageOutName");
  can_ok($cut, "SetShape");
  can_ok($cut, "SelectColor");
+ can_ok($cut, "StartDraw");
+ can_ok($cut, "DeleteBindings");
+ can_ok($cut, "Scroll");
+
  can_ok($cut, "GetPointsOutOval");
  can_ok($cut, "GetLinesOutOval");
  can_ok($cut, "DrawOval");
  can_ok($cut, "MoveOval");
  can_ok($cut, "EndDrawOval");
- can_ok($cut, "DeleteBindings");
- can_ok($cut, "Scroll");
+
  can_ok($cut, "GetPointsOutCircle");
  can_ok($cut, "GetLinesOutCircle");
- can_ok($cut, "StartDraw");
  can_ok($cut, "DrawCircle");
  can_ok($cut, "MoveCircle");
  can_ok($cut, "EndDrawCircle");
 
+ can_ok($cut, "GetPointsOutPolygon");
+ can_ok($cut, "GetLinesOutPolygon");
+ can_ok($cut, "DrawPolygon");
+ can_ok($cut, "MovePolygon");
+ can_ok($cut, "EndDrawPolygon");
+ can_ok($cut, "MoveTempLine");
 
  can_ok($cut, "Subwidget");
  for(qw/
@@ -143,25 +153,71 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	ok($cut->{file_in} = "test.jpg");
  	ok($cut->{image_in} = $test_image);
  	ok($cut->{image_format} = "JPEG");
+ 	ok($cut->{_shape} = "rectangle");
  	ok($cut->ImageIncrease());
  	ok($cut->ImageReduce());
- 	ok($cut->SetImageOutName());
  	ok($cut->SetImageOutWidth());
  	ok($cut->SetImageOutHeight());
- 	#ok($cut->ImageCut());
+	ok($cut->SetImageOutName());
+
  	ok($cut->{_shape} = "oval");
  	ok($cut->{_color} = "#FF0000");
+ 	ok($cut->{ap_x1} = 93);
+ 	ok($cut->{ap_y1} = 40);
+ 	ok($cut->{ap_x2} = 232);
+ 	ok($cut->{ap_y2} = 223);
+ 	ok($cut->SetImageOutWidth());
+ 	ok($cut->SetImageOutHeight());
+	ok($cut->SetImageOutName());
  	ok($cut->ImageCut());
+
  	ok($cut->{_shape} = "circle");
  	ok($cut->{_color} = "#00FF00");
+ 	ok($cut->{ap_x1} = 96);
+ 	ok($cut->{ap_x2} = 232);
+ 	ok($cut->{ap_y1} = 57);
+ 	ok($cut->{ap_y2} = 193);
+ 	ok($cut->SetImageOutWidth());
+ 	ok($cut->SetImageOutHeight());
+	ok($cut->SetImageOutName());
  	ok($cut->ImageCut());
  	ok($cut->ImageReduce());
+ 	ok($cut->SetImageOutWidth());
+ 	ok($cut->SetImageOutHeight());
+	ok($cut->SetImageOutName());
  	ok($cut->{_color} = "#0000FF");
  	ok($cut->ImageCut());
  	ok($cut->ImageIncrease());
  	ok($cut->ImageIncrease());
+ 	ok($cut->SetImageOutWidth());
+ 	ok($cut->SetImageOutHeight());
+	ok($cut->SetImageOutName());
  	ok($cut->{_color} = "#00FFFF");
  	ok($cut->ImageCut());
+
+ 	ok($cut->{_shape} = "polygon");
+ 	ok($cut->{_color} = "#D0B0A0");
+ 	ok(Tk::Image::Cut::DrawPolygon(
+ 		$cut->Subwidget("Canvas"),
+ 		$cut,
+ 		156, 46
+ 		));
+ 	my @polygon = (237, 107, 192, 184, 138, 189, 80, 130, 104, 79);
+ 	for(my $i = 0; $i < $#polygon; $i += 2)
+ 		{
+ 		ok(Tk::Image::Cut::MovePolygon(
+ 			$cut->Subwidget("Canvas"),
+ 			$cut,
+ 			$polygon[$i], $polygon[$i + 1]
+ 			));
+ 		}
+	ok(Tk::Image::Cut::EndDrawPolygon(
+ 		$cut->Subwidget("Canvas"),
+ 		$cut,
+ 		104, 79
+ 		));
+ 	ok($cut->ImageCut());
+
  	ok($cut->CreateAperture());
  	ok($cut->SetShape());
  	ok(Tk::Image::Cut::MoveUpperLine($cut->Subwidget("Canvas"), $cut, 100));
@@ -178,8 +234,10 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	# ok($cut->SelectImage());
  	ok($cut->GetPointsOutOval(50, 50, 100, 200));
  	ok($cut->GetPointsOutCircle(50, 50, 222, 333));
+ 	ok($cut->GetPointsOutPolygon(156, 46, 237, 107, 192, 184, 138, 189, 80, 130, 104, 79, 104, 79));
  	ok($cut->GetLinesOutOval(51, 52, 103, 204));
  	ok($cut->GetLinesOutCircle(52, 53, 104, 205));
+ 	ok($cut->GetLinesOutPolygon(156, 46, 237, 107, 192, 184, 138, 189, 80, 130, 104, 79, 104, 79));
  	ok(Tk::Image::Cut::StartDraw($cut->Subwidget("Canvas"), $cut, 30, 200));
  	ok(Tk::Image::Cut::DrawCircle($cut->Subwidget("Canvas"), $cut, 40, 77));
  	ok(Tk::Image::Cut::MoveCircle($cut->Subwidget("Canvas"), $cut, 51, 78));
@@ -193,6 +251,9 @@ BEGIN { use_ok('Tk::Image::Cut') };
  	$mw->destroy();
  	}
 #-------------------------------------------------
+
+
+
 
 
 

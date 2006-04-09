@@ -1,5 +1,10 @@
 Revision history for Perl extension Tk::Image::Cut.
 
+0.07 Sun Apr 2 09:48:34 2006
+ 	- functions added to cut pictures into polygon shape
+ 	- Some improvements at the mouse bindings
+ 	- add some tests
+
 0.06 Sat Mar 18 18:40:13 2006
  	- bugfix in Makefile.PL
 
@@ -25,6 +30,9 @@ Revision history for Perl extension Tk::Image::Cut.
 0.01  Sat Jan 21 13:54:21 2006
 	- original version; created by h2xs 1.23 with options
 		-AXn Tk::Image::Cut
+
+
+
 
 
 
